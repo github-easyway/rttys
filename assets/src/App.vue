@@ -2,17 +2,15 @@
     <div id="app">
         <Input v-if="!terminal.show" v-model="searchString" icon="search" size="large" @on-change="handleSearch" placeholder="Please enter the filter key..." style="width: 400px" />
         <Table v-if="!terminal.show" :loading="devices.loading" :height="devices.height" :columns="devlistTitle" :data="devices.filtered" style="width: 100%"></Table>
-        <div ref="terminal" class="terminal" v-if="terminal.show"></div>
+        <div ref="terminal" class="terminal" v-if="terminal.show" @contextmenu="showMenu"></div>
         <Spin size="large" fix v-if="terminal.loading"></Spin>
-        <Modal v-model="contextMenuVisible" width="21">
-             <Menu theme="light" @on-select="handleContextMenu">
-                <MenuItem name="upfile">Upload file to device</MenuItem>
-                <MenuItem name="downfile">Download file from device</MenuItem>
-                <MenuItem name="increasefontsize">Increase font size</MenuItem>
-                <MenuItem name="decreasefontsize">Decrease font size</MenuItem>
-             </Menu>
-             <div slot="footer"></div>
-        </Modal>
+        <vue-context-menu :contextMenuData="contextMenuData"
+            @upfile="menuUpfile"
+            @downfile="menuDownfile"
+            @increasefontsize="menuIncreasefontsize"
+            @decreasefontsize="menuDecreasefontsize"
+            >
+        </vue-context-menu>
         <Modal v-model="upfile.modal" width="360" :mask-closable="false" @on-cancel="cancelUpfile">
             <p slot="header"><span>Upload file to device</span></p>
             <Upload :before-upload="beforeUpload" action="">
@@ -48,8 +46,29 @@ Terminal.applyAddon(fit);
 export default {
     data() {
         return {
+            contextMenuData: {
+                menuName: 'demo',
+                axios: {
+                    x: null,
+                    y: null
+                },
+                menulists: [
+                    {
+                        fnHandler: 'upfile',
+                        btnName: 'Upload file to device'
+                    },{
+                        fnHandler: 'downfile',
+                        btnName: 'Download file from device'
+                    },{
+                        fnHandler: 'increasefontsize',
+                        btnName: 'Increase font size'
+                    },{
+                        fnHandler: 'decreasefontsize',
+                        btnName: 'Decrease font size'
+                    }
+                ]
+            },
             searchString: '',
-            contextMenuVisible: false,
             terminal: {loading: false, show: false, term: null, recvCnt: 0},
             devices: {loading: true, height: document.body.offsetHeight - 20, list: [], filtered: []},
             upfile: {modal: false, file: null, step: 2048, pos: 0, canceled: false, percent: 0},
@@ -124,13 +143,32 @@ export default {
         }
     },
     methods: {
+        showMenu() {
+            event.preventDefault();
+
+            // Get the current location
+            var x = event.clientX;
+            var y = event.clientY;
+            this.contextMenuData.axios = {x, y};
+        },
+        menuUpfile() {
+            this.handleContextMenu('upfile');
+        },
+        menuDownfile() {
+            this.handleContextMenu('downfile');
+        },
+        menuIncreasefontsize() {
+            this.handleContextMenu('increasefontsize');
+        },
+        menuDecreasefontsize() {
+            this.handleContextMenu('decreasefontsize');
+        },
         handleSearch() {
             this.devices.filtered = this.devices.list.filter(d => {
                 return d.id.indexOf(this.searchString) > -1 || d.description.indexOf(this.searchString) > -1;
             });
         },
         handleContextMenu(name) {
-            this.contextMenuVisible = false;
             let changeFontSize = 0;
             if (name == 'upfile') {
                 this.upfile = {modal: true, loading: false, file: null, step: 2048, pos: 0, canceled: false, percent: 0};
@@ -287,16 +325,6 @@ export default {
                         term.on('data', (data) => {
                             let pkt = rtty.newPacket(rtty.RTTY_PACKET_TTY, {sid: this.sid, data: Buffer.from(data)});
                             ws.send(pkt);
-                        });
-
-                        term.attachCustomKeyEventHandler((e) => {
-                            if (e.type == 'keydown') {
-                                if (e.ctrlKey && e.shiftKey) {
-                                    if (e.key == 'F') {
-                                        this.contextMenuVisible = true;
-                                    }
-                                }
-                            }
                         });
                     } else if (pkt.typ == rtty.RTTY_PACKET_TTY) {
                         this.terminal.recvCnt++;

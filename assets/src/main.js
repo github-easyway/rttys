@@ -6,10 +6,14 @@ import iView from 'iview'
 import 'iview/dist/styles/iview.css'
 import locale from 'iview/dist/locale/en-US';
 import '@zhaojh329/string.format.js'
+import VueContextMenu from 'vue-contextmenu'
+import 'vue-contextmenu/style/css/font-awesome.min.css'
 
 Vue.config.productionTip = false
 
 Vue.use(iView, { locale });
+
+Vue.use(VueContextMenu)
 
 /* eslint-disable no-new */
 new Vue({
